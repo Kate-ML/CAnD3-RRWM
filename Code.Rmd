@@ -1,0 +1,72 @@
+---
+title: "RRWM Data Activity (CAnD3) - Code"
+author: "Kate Marr-Laing"
+date: "2023-09-22"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Libraries and Importing dataset
+
+```{r  message= FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(stargazer)
+
+# importing dataset
+gss <- read_csv("gss-12M0025-E-2017-c-31_F1.csv")
+```
+
+## Recoding Variables
+
+```{r, echo=TRUE}
+gss <- gss |>
+  mutate(contraception = case_when(FI_505 == 1 ~ 1,
+                                   FI_505 == 2 ~ 0)) |>
+  mutate(children_3years = case_when(FI_105 == 1 | FI_105 == 2 ~ 1,
+                                   FI_105 == 3 | FI_105 == 4 ~ 0)) |>
+  mutate(spouse_cannot = case_when(FI_240 == 1 ~ 1,
+                                         FI_240 == 2 ~ 0))
+```
+
+## Descriptive Statistics Plot
+
+```{r echo = TRUE}
+
+# subsetting selected variables and creating df for bar graph
+gss_ggplot <- gss |>
+  select(contraception, children_3years, spouse_cannot) |>
+  tidyr::pivot_longer(1:3) |>
+  mutate(value = factor(value)) #making the value variable a factor
+
+# creating plot
+gss_ggplot |>
+  drop_na(value) |>
+  ggplot(aes(x = name, fill = value, group = value)) +
+  geom_bar() + 
+  scale_fill_discrete(name = "Response\n(value with NAs removed)",
+                                   labels = c("No (0)", "Yes (1)"))  +
+  labs(y = "Count", x = "Variable") +
+  scale_x_discrete(labels=c("children_3years" = 
+                              "Intending to \nhave children \nnext 3 years\n(children_3years)", 
+                            "contraception" = 
+                              "Currently using\ncontraception\n(contraception)",
+                            "spouse_cannot" = 
+                              "Spouse told \ncannot have children\n(spouse_cannot)")) +
+  ggtitle("Descriptive Statistics")
+```
+
+## Linear Regression
+
+```{r}
+# creating initial regression model
+reg_model <- lm(contraception ~ children_3years + spouse_cannot,  
+                data = gss, na.action = na.omit) 
+
+# creating regression table
+stargazer(reg_model, type = "text")
+```
